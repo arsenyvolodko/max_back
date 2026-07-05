@@ -11,7 +11,9 @@ class DayProgramInline(admin.TabularInline):
 
 @admin.register(City)
 class CityAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name')
+    list_display = ('id', 'name', 'order')
+    list_editable = ('order',)
+    ordering = ('order', 'name')
     search_fields = ('name',)
 
 

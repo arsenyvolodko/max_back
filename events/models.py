@@ -5,11 +5,12 @@ from .fields import HashedFileField
 
 class City(models.Model):
     name = models.CharField('Название', max_length=255)
+    order = models.PositiveIntegerField('Порядок', default=0, db_index=True)
 
     class Meta:
         verbose_name = 'Город'
         verbose_name_plural = 'Города'
-        ordering = ('name',)
+        ordering = ('order', 'name')
 
     def __str__(self):
         return self.name

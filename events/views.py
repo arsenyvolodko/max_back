@@ -18,8 +18,8 @@ from .serializers import (
 
 
 class CityListView(ListAPIView):
-    """GET /api/cities/ — список городов (id + name), по алфавиту."""
-    queryset = City.objects.order_by(Lower('name'))
+    """GET /api/cities/ — список городов (id + name) в заданном порядке (order)."""
+    queryset = City.objects.order_by('order', Lower('name'))
     serializer_class = CityListSerializer
 
 
