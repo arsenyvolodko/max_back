@@ -1,0 +1,16 @@
+services:
+  web:
+    build: .
+    image: max_back
+    container_name: max_back
+    restart: unless-stopped
+    ports:
+      # host:container — приложение доступно снаружи по 138.16.178.46:8000
+      - "8000:8000"
+    environment:
+      DJANGO_DEBUG: "False"
+      DJANGO_ALLOWED_HOSTS: "138.16.178.46,localhost,127.0.0.1"
+    volumes:
+      # сохраняем БД SQLite и загруженные медиа между перезапусками
+      - ./db.sqlite3:/app/db.sqlite3
+      - ./media:/app/media

@@ -1,0 +1,12 @@
+.git
+.idea
+__pycache__
+*.pyc
+*.pyo
+*.pye
+.venv
+venv
+env
+staticfiles
+.DS_Store
+*.log
