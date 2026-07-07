@@ -41,8 +41,9 @@ class ProgramSerializer(serializers.ModelSerializer):
             'city',
             'schedule_text',
             'schedule_file',
-            'speakers_text',
-            'speakers_file',
             'map_schema',
+            'map_description',
+            'faq',
+            'check_list',
             'days',
         )

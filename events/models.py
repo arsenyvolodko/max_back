@@ -27,13 +27,12 @@ class Program(models.Model):
     schedule_file = HashedFileField(
         'Расписание (файл)', upload_to='program/schedule/', blank=True, null=True
     )
-    speakers_text = models.TextField('Спикеры (текст)', blank=True)
-    speakers_file = HashedFileField(
-        'Спикеры (файл)', upload_to='program/speakers/', blank=True, null=True
-    )
     map_schema = HashedFileField(
         'Схема (карта)', upload_to='program/map/', blank=True, null=True
     )
+    map_description = models.TextField('Описание карты проезда', blank=True)
+    faq = models.TextField('FAQ', blank=True)
+    check_list = models.TextField('Check-list', blank=True)
 
     class Meta:
         verbose_name = 'Программа'
