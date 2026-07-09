@@ -30,7 +30,12 @@ class CityProgramView(APIView):
     def get(self, request, city_id):
         program = get_object_or_404(
             Program.objects.select_related('city').prefetch_related(
-                Prefetch('days', queryset=DayProgram.objects.order_by('date'))
+                Prefetch(
+                    'days',
+                    queryset=DayProgram.objects.order_by('date').prefetch_related(
+                        'schedule_files'
+                    ),
+                )
             ),
             city_id=city_id,
         )

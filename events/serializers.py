@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import City, DayProgram, Program, User
+from .models import City, DayProgram, DayScheduleFile, Program, User
 
 
 class CityListSerializer(serializers.ModelSerializer):
@@ -25,10 +25,18 @@ class UserJoinCitySerializer(serializers.Serializer):
     city_id = serializers.IntegerField()
 
 
+class DayScheduleFileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DayScheduleFile
+        fields = ('id', 'file', 'order')
+
+
 class DayProgramSerializer(serializers.ModelSerializer):
+    schedule_files = DayScheduleFileSerializer(many=True, read_only=True)
+
     class Meta:
         model = DayProgram
-        fields = ('id', 'date', 'schedule_text', 'schedule_file')
+        fields = ('id', 'date', 'schedule_files')
 
 
 class ProgramSerializer(serializers.ModelSerializer):

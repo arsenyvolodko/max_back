@@ -70,10 +70,6 @@ class DayProgram(models.Model):
         verbose_name='Программа',
     )
     date = models.DateField('Дата')
-    schedule_text = models.TextField('Расписание дня (текст)', blank=True)
-    schedule_file = HashedFileField(
-        'Расписание дня (файл)', upload_to='day_program/schedule/', blank=True, null=True
-    )
 
     class Meta:
         verbose_name = 'Программа дня'
@@ -82,3 +78,24 @@ class DayProgram(models.Model):
 
     def __str__(self):
         return f'{self.program.city.name} — {self.date}'
+
+
+class DayScheduleFile(models.Model):
+    day = models.ForeignKey(
+        DayProgram,
+        on_delete=models.CASCADE,
+        related_name='schedule_files',
+        verbose_name='Программа дня',
+    )
+    file = HashedFileField(
+        'Расписание дня (файл)', upload_to='day_program/schedule/'
+    )
+    order = models.PositiveIntegerField('Порядок', default=0, db_index=True)
+
+    class Meta:
+        verbose_name = 'Файл расписания дня'
+        verbose_name_plural = 'Файлы расписания дня'
+        ordering = ('order', 'id')
+
+    def __str__(self):
+        return f'{self.day} — {self.file.name}'
