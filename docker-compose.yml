@@ -4,13 +4,26 @@ services:
     image: max_back
     container_name: max_back
     restart: unless-stopped
+    networks:
+      # та же сеть, где крутится отдельно запущенный контейнер postgres
+      - backnet
     ports:
       # host:container — приложение доступно снаружи по 138.16.178.46:8000
       - "8000:8000"
     environment:
-      DJANGO_DEBUG: "True"
+      DJANGO_DEBUG: "False"
       DJANGO_ALLOWED_HOSTS: "138.16.178.46,localhost,127.0.0.1"
+      # Подключение к Postgres — значения должны совпадать с docker run postgres
+      POSTGRES_DB: max_back
+      POSTGRES_USER: max
+      POSTGRES_PASSWORD: "СМЕНИ_МЕНЯ"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
     volumes:
-      # сохраняем БД SQLite и загруженные медиа между перезапусками
-      - ./db.sqlite3:/app/db.sqlite3
+      # sqlite больше не монтируем — данные теперь в Postgres
       - ./media:/app/media
+
+networks:
+  backnet:
+    # сеть создаётся вручную: docker network create backnet
+    external: true
