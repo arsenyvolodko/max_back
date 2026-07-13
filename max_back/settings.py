@@ -31,6 +31,7 @@ ALLOWED_HOSTS = os.environ.get(
     'localhost,127.0.0.1,138.16.178.46',
 ).split(',')
 
+MAX_UPLOAD_SIZE = 52428800
 
 # Application definition
 
