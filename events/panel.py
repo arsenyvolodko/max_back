@@ -12,8 +12,10 @@ from django.contrib.auth.views import LoginView, redirect_to_login
 from django.core.exceptions import PermissionDenied
 from django.db.models import Prefetch
 from django.forms import inlineformset_factory
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
+from django.views.decorators.http import require_POST
 
 from .models import City, DayProgram, DayScheduleFile, Program
 
@@ -77,12 +79,15 @@ class ProgramForm(forms.ModelForm):
         }
 
 
+# Удаление вынесено в отдельный AJAX-эндпоинт (мгновенно, без «Сохранить»),
+# поэтому can_delete не нужен — формсет отвечает только за порядок,
+# замену и добавление файлов.
 DayScheduleFileFormSet = inlineformset_factory(
     DayProgram,
     DayScheduleFile,
     fields=('file', 'order'),
     extra=1,
-    can_delete=True,
+    can_delete=False,
     widgets={
         'order': forms.HiddenInput(),
         'file': forms.FileInput(attrs={'class': 'file-input'}),
@@ -148,3 +153,13 @@ def day_detail(request, day_id):
         'panel/day_detail.html',
         {'day': day, 'city': day.program.city, 'formset': formset},
     )
+
+
+@panel_required
+@require_POST
+def day_file_delete(request, day_id, file_id):
+    """Мгновенное удаление одного файла расписания дня (по крестику)."""
+    obj = get_object_or_404(DayScheduleFile, pk=file_id, day_id=day_id)
+    obj.file.delete(save=False)  # убрать файл с диска
+    obj.delete()
+    return JsonResponse({'ok': True})

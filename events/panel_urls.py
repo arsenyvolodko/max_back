@@ -11,4 +11,9 @@ urlpatterns = [
     path('', panel.program_list, name='list'),
     path('city/<int:city_id>/', panel.city_detail, name='city'),
     path('day/<int:day_id>/', panel.day_detail, name='day'),
+    path(
+        'day/<int:day_id>/file/<int:file_id>/delete/',
+        panel.day_file_delete,
+        name='day-file-delete',
+    ),
 ]

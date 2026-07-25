@@ -27,4 +27,12 @@ COPY . .
 EXPOSE 8000
 
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["gunicorn", "max_back.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+# gthread-воркеры + увеличенный таймаут: без nginx перед gunicorn медленная
+# загрузка больших файлов не должна убивать воркер по таймауту.
+CMD ["gunicorn", "max_back.wsgi:application", \
+     "--bind", "0.0.0.0:8000", \
+     "--workers", "3", \
+     "--worker-class", "gthread", \
+     "--threads", "4", \
+     "--timeout", "300", \
+     "--graceful-timeout", "300"]

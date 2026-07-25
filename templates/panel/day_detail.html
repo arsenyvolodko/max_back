@@ -82,7 +82,7 @@
 
             <div class="file-list" id="file-list">
                 {% for form in formset %}
-                    <div class="file-row" draggable="true">
+                    <div class="file-row" draggable="true"{% if form.instance.pk %} data-delete-url="{% url 'panel:day-file-delete' day.id form.instance.pk %}"{% endif %}>
                         <span class="handle" title="Перетащить">⠿</span>
                         <span class="num"></span>
                         <div class="body">
@@ -104,7 +104,6 @@
                             {% endif %}
                             {{ form.file }}
                             {% if form.file.errors %}<div class="errors">{{ form.file.errors|striptags }}</div>{% endif %}
-                            <span class="hidden-del">{{ form.DELETE }}</span>
                         </div>
                         <button type="button" class="remove-btn" title="Удалить">✕</button>
                     </div>
@@ -128,7 +127,6 @@
             <div class="body">
                 <div class="current"><span class="none">Новый файл</span></div>
                 {{ formset.empty_form.file }}
-                <span class="hidden-del">{{ formset.empty_form.DELETE }}</span>
                 {{ formset.empty_form.order }}
                 {{ formset.empty_form.id }}
             </div>
@@ -143,32 +141,59 @@
     const list = document.getElementById('file-list');
     const addBtn = document.getElementById('add-file');
     const emptyTpl = document.getElementById('empty-form').innerHTML;
-    const totalForms = document.getElementById('id_{{ formset.prefix }}-TOTAL_FORMS');
+    const prefix = '{{ formset.prefix }}';
+    const totalForms = document.getElementById('id_' + prefix + '-TOTAL_FORMS');
+    const initialForms = document.getElementById('id_' + prefix + '-INITIAL_FORMS');
+    const csrftoken = document.querySelector('input[name=csrfmiddlewaretoken]').value;
 
+    // Пересобирает индексы форм 0..n-1 и счётчики management_form.
+    function reindexForms() {
+        const rows = list.querySelectorAll('.file-row');
+        let initial = 0;
+        rows.forEach(function (row, i) {
+            row.querySelectorAll('input, select, textarea').forEach(function (inp) {
+                if (inp.name) inp.name = inp.name.replace(/-\d+-/, '-' + i + '-');
+                if (inp.id) inp.id = inp.id.replace(/-\d+-/, '-' + i + '-');
+            });
+            const idInput = row.querySelector('input[name$="-id"]');
+            if (idInput && idInput.value) initial++;
+        });
+        if (totalForms) totalForms.value = rows.length;
+        if (initialForms) initialForms.value = initial;
+    }
+
+    // Проставляет порядок ТОЛЬКО реальным строкам (существующим или с выбранным
+    // файлом). Пустые строки не трогаем — иначе Django считает их заполненными.
     function renumber() {
         let visible = 0;
         list.querySelectorAll('.file-row').forEach(function (row) {
             const orderInput = row.querySelector('input[name$="-order"]');
             const num = row.querySelector('.num');
-            if (row.classList.contains('to-delete')) {
-                if (num) num.textContent = '×';
-                return;
+            const idInput = row.querySelector('input[name$="-id"]');
+            const fileInput = row.querySelector('input[type="file"]');
+            const hasPk = idInput && idInput.value;
+            const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+            if (hasPk || hasFile) {
+                if (orderInput) orderInput.value = visible;
+                if (num) num.textContent = visible + 1;
+                visible++;
+            } else {
+                // Пустая строка: order НЕ трогаем (там initial=0), иначе Django
+                // сочтёт форму заполненной и потребует файл.
+                if (num) num.textContent = '+';
             }
-            if (orderInput) orderInput.value = visible;
-            if (num) num.textContent = visible + 1;
-            visible++;
         });
     }
 
     // --- Добавление файла ---
     addBtn.addEventListener('click', function () {
-        const idx = parseInt(totalForms.value, 10);
+        const idx = list.querySelectorAll('.file-row').length;
         const html = emptyTpl.replace(/__prefix__/g, idx);
         const tmp = document.createElement('div');
         tmp.innerHTML = html.trim();
         const row = tmp.firstElementChild;
         list.appendChild(row);
-        totalForms.value = idx + 1;
+        if (totalForms) totalForms.value = idx + 1;
         if (window.enhanceFilePickers) window.enhanceFilePickers(row);
         renumber();
     });
@@ -178,18 +203,39 @@
         const btn = e.target.closest('.remove-btn');
         if (!btn) return;
         const row = btn.closest('.file-row');
-        const del = row.querySelector('input[name$="-DELETE"]');
-        const hasPk = row.querySelector('input[name$="-id"]') &&
-                      row.querySelector('input[name$="-id"]').value;
-        if (hasPk) {
-            // существующий файл — помечаем на удаление
-            if (del) del.checked = true;
-            row.classList.add('to-delete');
+        const url = row.getAttribute('data-delete-url');
+
+        if (url) {
+            // Существующий файл — удаляем сразу на сервере, без «Сохранить».
+            if (!confirm('Удалить этот файл? Действие сразу вступит в силу.')) return;
+            btn.disabled = true;
+            fetch(url, {
+                method: 'POST',
+                headers: {'X-CSRFToken': csrftoken, 'X-Requested-With': 'XMLHttpRequest'},
+            }).then(function (r) {
+                if (r.ok) {
+                    row.remove();
+                    reindexForms();
+                    renumber();
+                } else {
+                    alert('Не удалось удалить файл. Обновите страницу и попробуйте ещё раз.');
+                    btn.disabled = false;
+                }
+            }).catch(function () {
+                alert('Не удалось удалить файл. Проверьте соединение.');
+                btn.disabled = false;
+            });
         } else {
-            // новый несохранённый файл — просто убираем
+            // Новый несохранённый файл — просто убираем со страницы.
             row.remove();
+            reindexForms();
+            renumber();
         }
-        renumber();
+    });
+
+    // Выбор файла в строке -> пересчитать порядок (строка стала «реальной»).
+    list.addEventListener('change', function (e) {
+        if (e.target && e.target.type === 'file') renumber();
     });
 
     // --- Перетаскивание для порядка ---
