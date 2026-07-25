@@ -1,0 +1,27 @@
+{% load panel_extras %}
+{% comment %}
+Поле загрузки файла с предпросмотром.
+Параметры: field (BoundField), file (FieldFile), label, hint.
+{% endcomment %}
+<div class="field">
+    <label for="{{ field.id_for_label }}">{{ label }}</label>
+    {% if hint %}<p class="hint">{{ hint }}</p>{% endif %}
+
+    {% if file %}
+        <div class="preview-box">
+            {% if file|is_image %}
+                <a href="{{ file.url }}" target="_blank"><img class="preview-img" src="{{ file.url }}" alt="Предпросмотр"></a>
+            {% elif file|is_pdf %}
+                <iframe class="preview-pdf" src="{{ file.url }}" title="Предпросмотр"></iframe>
+            {% else %}
+                <div class="preview-file">📎 Файл загружен</div>
+            {% endif %}
+            <a class="preview-open" href="{{ file.url }}" target="_blank">Открыть в новой вкладке ↗</a>
+        </div>
+    {% else %}
+        <div class="current-file"><span class="none">Файл ещё не загружен</span></div>
+    {% endif %}
+
+    {{ field }}
+    {% if field.errors %}<div class="errors">{{ field.errors|striptags }}</div>{% endif %}
+</div>

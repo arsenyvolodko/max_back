@@ -32,11 +32,17 @@ class Program(models.Model):
     )
     map_description = models.TextField('Описание карты проезда', blank=True)
     faq = models.TextField('FAQ', blank=True)
+    faq_file = HashedFileField(
+        'FAQ (файл)', upload_to='program/faq/', blank=True, null=True
+    )
     check_list = models.TextField('Check-list', blank=True)
 
     class Meta:
         verbose_name = 'Программа'
         verbose_name_plural = 'Программы'
+        permissions = [
+            ('access_panel', 'Доступ к панели управления'),
+        ]
 
     def __str__(self):
         return f'Программа — {self.city.name}'

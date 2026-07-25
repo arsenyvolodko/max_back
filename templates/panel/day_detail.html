@@ -1,0 +1,229 @@
+{% extends 'panel/base.html' %}
+{% load panel_extras %}
+
+{% block title %}{{ day.date }} — {{ city.name }}{% endblock %}
+
+{% block head_extra %}
+<style>
+    .file-list { margin: 0 0 16px; }
+    .file-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-bottom: 12px;
+        transition: box-shadow .15s, border-color .15s, opacity .15s;
+    }
+    .file-row.dragging { opacity: .5; border-color: var(--brand); box-shadow: var(--shadow); }
+    .file-row .handle {
+        cursor: grab;
+        font-size: 22px;
+        color: var(--muted);
+        user-select: none;
+        line-height: 1;
+        padding: 0 2px;
+    }
+    .file-row .handle:active { cursor: grabbing; }
+    .file-row .num {
+        min-width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: var(--brand);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+    }
+    .file-row .body { flex: 1; min-width: 0; }
+    .file-row .current { font-size: 14px; margin-bottom: 8px; }
+    .file-row .current .none { color: var(--muted); }
+    .file-row.to-delete { opacity: .45; }
+    .file-row.to-delete .body { text-decoration: line-through; }
+    .remove-btn {
+        border: none;
+        background: transparent;
+        color: var(--danger);
+        cursor: pointer;
+        font-size: 22px;
+        line-height: 1;
+        padding: 4px 8px;
+        border-radius: 8px;
+    }
+    .remove-btn:hover { background: #fdeceb; }
+    .hidden-del { display: none; }
+    .drag-hint { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="crumbs">
+        <a href="{% url 'panel:list' %}">Программы</a>
+        <span>›</span>
+        <a href="{% url 'panel:city' city.id %}">{{ city.name }}</a>
+        <span>›</span>{{ day.date }}
+    </div>
+
+    <h1>{{ day.date }}</h1>
+    <p class="lead">Файлы расписания на этот день. Перетаскивайте за значок ⠿, чтобы менять порядок.</p>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ formset.management_form }}
+
+        <div class="card">
+            <h2>Файлы расписания дня</h2>
+            <p class="drag-hint">Порядок определяет, как файлы показываются в приложении (сверху вниз).</p>
+
+            <div class="file-list" id="file-list">
+                {% for form in formset %}
+                    <div class="file-row" draggable="true">
+                        <span class="handle" title="Перетащить">⠿</span>
+                        <span class="num"></span>
+                        <div class="body">
+                            {{ form.id }}
+                            {{ form.order }}
+                            {% if form.instance.pk and form.instance.file %}
+                                <div class="preview-box">
+                                    {% if form.instance.file|is_image %}
+                                        <a href="{{ form.instance.file.url }}" target="_blank"><img class="preview-img" src="{{ form.instance.file.url }}" alt="Предпросмотр"></a>
+                                    {% elif form.instance.file|is_pdf %}
+                                        <iframe class="preview-pdf" src="{{ form.instance.file.url }}" title="Предпросмотр"></iframe>
+                                    {% else %}
+                                        <div class="preview-file">📎 Файл загружен</div>
+                                    {% endif %}
+                                    <a class="preview-open" href="{{ form.instance.file.url }}" target="_blank">Открыть в новой вкладке ↗</a>
+                                </div>
+                            {% else %}
+                                <div class="current"><span class="none">Новый файл</span></div>
+                            {% endif %}
+                            {{ form.file }}
+                            {% if form.file.errors %}<div class="errors">{{ form.file.errors|striptags }}</div>{% endif %}
+                            <span class="hidden-del">{{ form.DELETE }}</span>
+                        </div>
+                        <button type="button" class="remove-btn" title="Удалить">✕</button>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <button type="button" class="btn ghost" id="add-file">＋ Добавить файл</button>
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="btn">Сохранить</button>
+            <a class="btn secondary" href="{% url 'panel:city' city.id %}">Назад</a>
+        </div>
+    </form>
+
+    {# Шаблон пустой формы для добавления новых файлов #}
+    <template id="empty-form">
+        <div class="file-row" draggable="true">
+            <span class="handle" title="Перетащить">⠿</span>
+            <span class="num"></span>
+            <div class="body">
+                <div class="current"><span class="none">Новый файл</span></div>
+                {{ formset.empty_form.file }}
+                <span class="hidden-del">{{ formset.empty_form.DELETE }}</span>
+                {{ formset.empty_form.order }}
+                {{ formset.empty_form.id }}
+            </div>
+            <button type="button" class="remove-btn" title="Удалить">✕</button>
+        </div>
+    </template>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const list = document.getElementById('file-list');
+    const addBtn = document.getElementById('add-file');
+    const emptyTpl = document.getElementById('empty-form').innerHTML;
+    const totalForms = document.getElementById('id_{{ formset.prefix }}-TOTAL_FORMS');
+
+    function renumber() {
+        let visible = 0;
+        list.querySelectorAll('.file-row').forEach(function (row) {
+            const orderInput = row.querySelector('input[name$="-order"]');
+            const num = row.querySelector('.num');
+            if (row.classList.contains('to-delete')) {
+                if (num) num.textContent = '×';
+                return;
+            }
+            if (orderInput) orderInput.value = visible;
+            if (num) num.textContent = visible + 1;
+            visible++;
+        });
+    }
+
+    // --- Добавление файла ---
+    addBtn.addEventListener('click', function () {
+        const idx = parseInt(totalForms.value, 10);
+        const html = emptyTpl.replace(/__prefix__/g, idx);
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html.trim();
+        const row = tmp.firstElementChild;
+        list.appendChild(row);
+        totalForms.value = idx + 1;
+        if (window.enhanceFilePickers) window.enhanceFilePickers(row);
+        renumber();
+    });
+
+    // --- Удаление файла ---
+    list.addEventListener('click', function (e) {
+        const btn = e.target.closest('.remove-btn');
+        if (!btn) return;
+        const row = btn.closest('.file-row');
+        const del = row.querySelector('input[name$="-DELETE"]');
+        const hasPk = row.querySelector('input[name$="-id"]') &&
+                      row.querySelector('input[name$="-id"]').value;
+        if (hasPk) {
+            // существующий файл — помечаем на удаление
+            if (del) del.checked = true;
+            row.classList.add('to-delete');
+        } else {
+            // новый несохранённый файл — просто убираем
+            row.remove();
+        }
+        renumber();
+    });
+
+    // --- Перетаскивание для порядка ---
+    let dragged = null;
+    list.addEventListener('dragstart', function (e) {
+        dragged = e.target.closest('.file-row');
+        if (dragged) dragged.classList.add('dragging');
+    });
+    list.addEventListener('dragend', function () {
+        if (dragged) dragged.classList.remove('dragging');
+        dragged = null;
+        renumber();
+    });
+    list.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        if (!dragged) return;
+        const after = getAfter(e.clientY);
+        if (after == null) list.appendChild(dragged);
+        else list.insertBefore(dragged, after);
+    });
+
+    function getAfter(y) {
+        const rows = [...list.querySelectorAll('.file-row:not(.dragging)')];
+        return rows.reduce(function (closest, row) {
+            const box = row.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: row };
+            }
+            return closest;
+        }, { offset: -Infinity, element: null }).element;
+    }
+
+    renumber();
+})();
+</script>
+{% endblock %}

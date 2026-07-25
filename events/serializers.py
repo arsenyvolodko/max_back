@@ -52,6 +52,7 @@ class ProgramSerializer(serializers.ModelSerializer):
             'map_schema',
             'map_description',
             'faq',
+            'faq_file',
             'check_list',
             'days',
         )

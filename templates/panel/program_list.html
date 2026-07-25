@@ -1,0 +1,20 @@
+{% extends 'panel/base.html' %}
+
+{% block title %}Программы — Панель управления{% endblock %}
+
+{% block content %}
+    <h1>Программы по городам</h1>
+    <p class="lead">Выберите город, чтобы отредактировать его программу.</p>
+
+    {% for program in programs %}
+        <a class="row-link" href="{% url 'panel:city' program.city_id %}">
+            <div>
+                <div class="main">{{ program.city.name }}</div>
+                <div class="sub">Дней в программе: {{ program.days.count }}</div>
+            </div>
+            <div class="chevron">›</div>
+        </a>
+    {% empty %}
+        <div class="card"><p class="empty">Пока нет ни одной программы.</p></div>
+    {% endfor %}
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends 'panel/base.html' %}
+
+{% block title %}{{ city.name }} — Панель управления{% endblock %}
+
+{% block content %}
+    <div class="crumbs">
+        <a href="{% url 'panel:list' %}">Программы</a>
+        <span>›</span>{{ city.name }}
+    </div>
+
+    <h1>{{ city.name }}</h1>
+    <p class="lead">Отредактируйте материалы программы и нажмите «Сохранить».</p>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="card">
+            <h2>Материалы программы</h2>
+
+            {# --- Полная программа (файл) --- #}
+            {% include 'panel/_filefield.html' with field=form.schedule_file file=program.schedule_file label=form.schedule_file.label hint='Файл с полной программой (PDF или изображение).' %}
+
+            <hr class="divider">
+
+            {# --- Схема (карта) + описание проезда, друг под другом --- #}
+            {% include 'panel/_filefield.html' with field=form.map_schema file=program.map_schema label=form.map_schema.label hint='Картинка со схемой / картой проезда.' %}
+
+            <div class="field">
+                <label for="{{ form.map_description.id_for_label }}">{{ form.map_description.label }}</label>
+                <p class="hint">Текст к карте выше: как добраться, ориентиры, важные детали.</p>
+                {{ form.map_description }}
+                {% if form.map_description.errors %}<div class="errors">{{ form.map_description.errors|striptags }}</div>{% endif %}
+            </div>
+
+            <hr class="divider">
+
+            {# --- FAQ: текст + файл друг под другом --- #}
+            <div class="field">
+                <label for="{{ form.faq.id_for_label }}">{{ form.faq.label }}</label>
+                <p class="hint">Частые вопросы и ответы.</p>
+                {{ form.faq }}
+                {% if form.faq.errors %}<div class="errors">{{ form.faq.errors|striptags }}</div>{% endif %}
+            </div>
+
+            {% include 'panel/_filefield.html' with field=form.faq_file file=program.faq_file label=form.faq_file.label hint='Файл с FAQ (PDF или изображение) — в дополнение к тексту выше.' %}
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="btn">Сохранить</button>
+            <a class="btn secondary" href="{% url 'panel:list' %}">Назад</a>
+        </div>
+    </form>
+
+    <hr class="divider">
+
+    <h2>Программа по дням</h2>
+    <p class="lead">Нажмите на день, чтобы отредактировать файлы расписания этого дня.</p>
+
+    {% for day in program.days.all %}
+        <a class="row-link" href="{% url 'panel:day' day.id %}">
+            <div>
+                <div class="main">{{ day.date }}</div>
+                <div class="sub">Файлов расписания: {{ day.schedule_files.count }}</div>
+            </div>
+            <div class="chevron">›</div>
+        </a>
+    {% empty %}
+        <div class="card"><p class="empty">Для этого города пока нет дней.</p></div>
+    {% endfor %}
+{% endblock %}
