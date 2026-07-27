@@ -28,7 +28,7 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes')
 
 ALLOWED_HOSTS = os.environ.get(
     'DJANGO_ALLOWED_HOSTS',
-    'localhost,127.0.0.1,138.16.178.46',
+    'localhost,127.0.0.1,138.16.178.46,chaynaya-vysota.ru',
 ).split(',')
 
 MAX_UPLOAD_SIZE = 52428800
